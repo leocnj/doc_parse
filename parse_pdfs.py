@@ -3,6 +3,10 @@ from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions, TableStructureOptions, TableFormerMode
 from docling.datamodel.accelerator_options import AcceleratorOptions, AcceleratorDevice
+from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn, TextColumn
+from rich.console import Console
+
+console = Console()
 
 # ── CPU-only configuration ──────────────────────────────────────────────────
 cpu_options = AcceleratorOptions(
@@ -32,13 +36,22 @@ OUT_DIR.mkdir(exist_ok=True)
 
 for pdf_path in sorted(RAW_DIR.glob("*.pdf")):
     year = pdf_path.stem.split("-")[-1]  # e.g. "2024", "2025"
-    print(f"\nParsing {pdf_path.name} (this may take 5–15 min on CPU)...")
-
-    result = converter.convert(pdf_path)
-    md_text = result.document.export_to_markdown()
+    
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        TimeElapsedColumn(),
+        console=console,
+        transient=False,
+    ) as progress:
+        task = progress.add_task(f"[cyan]Parsing {pdf_path.name} (Extracting layout and tables)...", total=None)
+        
+        result = converter.convert(pdf_path)
+        md_text = result.document.export_to_markdown()
+        progress.update(task, completed=100, description=f"[green]Successfully parsed {pdf_path.name}![/green]")
 
     out_file = OUT_DIR / f"{year}.md"
     out_file.write_text(md_text, encoding="utf-8")
-    print(f"  ✓ Saved → {out_file}  ({len(md_text):,} chars)")
+    console.print(f"  [bold green]✓[/bold green] Saved → [yellow]{out_file}[/yellow] ({len(md_text):,} chars)\n")
 
-print("\nAll done.")
+console.print("[bold cyan]All done.[/bold cyan]")
