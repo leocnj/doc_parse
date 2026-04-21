@@ -52,6 +52,8 @@ for pdf_path in sorted(RAW_DIR.glob("*.pdf")):
 
     out_file = OUT_DIR / f"{year}.md"
     out_file.write_text(md_text, encoding="utf-8")
-    console.print(f"  [bold green]✓[/bold green] Saved → [yellow]{out_file}[/yellow] ({len(md_text):,} chars)\n")
+    json_out_file = OUT_DIR / f"{year}.json"
+    result.document.save_as_json(json_out_file)
+    console.print(f"  [bold green]✓[/bold green] Saved → [yellow]{out_file}[/yellow] & [yellow]{json_out_file}[/yellow]")
 
 console.print("[bold cyan]All done.[/bold cyan]")
