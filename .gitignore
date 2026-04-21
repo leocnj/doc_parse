@@ -13,3 +13,6 @@ wheels/
 raw/*.pdf
 diff/
 parsed/*.json
+.env
+.agent/
+docs/**/task.md
