@@ -2,15 +2,23 @@ import streamlit as st
 import json
 import fitz
 import os
+import ast
 
 st.set_page_config(layout="wide", page_title="Benefit Changes Visualizer")
 
 @st.cache_data
 def load_data():
     if not os.path.exists("diff/changes_geom.json"):
-        return None
+        return None, None
     with open("diff/changes_geom.json") as f:
-        return json.load(f)
+        geom_data = json.load(f)
+        
+    changes_data = []
+    if os.path.exists("diff/final_contract_changes.json"):
+        with open("diff/final_contract_changes.json") as f:
+            changes_data = json.load(f)
+            
+    return geom_data, changes_data
 
 def render_page_with_highlight(pdf_path, page_no, bbox):
     doc = fitz.open(pdf_path)
@@ -42,7 +50,7 @@ def main():
     st.title("Benefits Diff: 2024 vs 2025")
     st.markdown("Select an extracted section to visually verify changes against the original PDF representations.")
     
-    data = load_data()
+    data, ai_changes = load_data()
     if not data:
         st.warning("Geometric diff data not generated yet. Please run python diff_json.py.")
         return
@@ -75,12 +83,33 @@ def main():
         tables = cat_2024.get(selected_section_24, [])
         for idx, t in enumerate(tables):
             with st.expander(f"Data Origin: Page {t['prov']['page_no']}", expanded=True):
+                # Look for matching AI extraction using the exact metadata providence
+                matching_insights = []
+                for c in ai_changes:
+                    raw_meta = c.get("meta_data", "{}").strip()
+                    if raw_meta.startswith("```"):
+                        raw_meta = "\n".join(raw_meta.split("\n")[1:-1])
+                    try:
+                        parsed_meta = ast.literal_eval(raw_meta)
+                    except Exception:
+                        try:
+                            parsed_meta = json.loads(raw_meta.replace("'", '"'))
+                        except Exception:
+                            parsed_meta = {}
+                            
+                    if parsed_meta == t["prov"]:
+                        matching_insights.append(c)
+
+                for insight in matching_insights:
+                    st.success(f"**AI Detected Change:** {insight['summary']}")
+                    st.info(f"**Original Details:** {insight['original_texts']}")
+                
                 # Render the raw markdown data underneath
                 st.markdown(t["table_md"])
                 st.markdown("---")
                 if t["prov"]["page_no"]:
                     img = render_page_with_highlight("raw/molloy-univ-2024.pdf", t["prov"]["page_no"], t["prov"]["bbox"])
-                    st.image(img, caption=f"2024 Source Bounding Box (Page {t['prov']['page_no']})", use_column_width=True)
+                    st.image(img, caption=f"2024 Source Bounding Box (Page {t['prov']['page_no']})", use_container_width=True)
 
     # Right Column - 2025
     with col2:
@@ -92,7 +121,7 @@ def main():
                 st.markdown("---")
                 if t["prov"]["page_no"]:
                     img = render_page_with_highlight("raw/molloy-univ-2025.pdf", t["prov"]["page_no"], t["prov"]["bbox"])
-                    st.image(img, caption=f"2025 Source Bounding Box (Page {t['prov']['page_no']})", use_column_width=True)
+                    st.image(img, caption=f"2025 Source Bounding Box (Page {t['prov']['page_no']})", use_container_width=True)
 
 if __name__ == "__main__":
     main()
