@@ -9,9 +9,11 @@ wheels/
 # Virtual environments
 .venv
 
-# Data files
+# Data files — exclude large blobs and intermediate artifacts
 raw/*.pdf
-diff/
+diff/*
+!diff/changes_geom.json
+!diff/final_contract_changes.json
 parsed/*.json
 .env
 .agent/

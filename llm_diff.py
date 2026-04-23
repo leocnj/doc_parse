@@ -31,7 +31,14 @@ async def process_all_sections(client_async, mapping: MappingReport, data_24: di
     
     async def extract_changes_for_section(client_async, section_24_data: list, section_25_data: list) -> List[ChangeReport]:
         async with sem:
-            prompt = f"Extract numerical and meaningful benefit changes between these two datasets. Link back the exact meta_data from 2024 that corresponds to the change. \n2024 Data: {section_24_data}\n2025 Data: {section_25_data}"
+            prompt = (
+                f"Extract all numerical and meaningful benefit changes between these two datasets.\n"
+                f"For each change, write `original_texts` as a single string containing BOTH the 2024 source excerpt AND the 2025 source excerpt, "
+                f"separated by ' || ' (double pipe). Always prefix each side with '2024:' and '2025:' labels.\n"
+                f"Example: '2024: | DPPO | $16.60 | || 2025: | DPPO | $17.45 |'\n"
+                f"Link back the exact meta_data from 2024 that corresponds to the change.\n"
+                f"2024 Data: {section_24_data}\n2025 Data: {section_25_data}"
+            )
             
             try:
                 response = await client_async.aio.models.generate_content(
